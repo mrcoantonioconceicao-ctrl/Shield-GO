@@ -1,0 +1,126 @@
+package domain
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+	"time"
+)
+
+// Common Domain Errors
+var (
+	ErrInvalidRepoURL    = errors.New("invalid GitHub repository URL")
+	ErrEmptyBranchName   = errors.New("branch name cannot be empty")
+	ErrEmptyCommitMessage = errors.New("commit message cannot be empty")
+	ErrUnsafeFilePath    = errors.New("file path contains unsafe directory traversal characters")
+	ErrPatchFailed       = errors.New("failed to apply security patch")
+	ErrGitHubAuthFailed  = errors.New("github authentication token is missing or invalid")
+)
+
+// VulnerabilityType represents the category of detected breach or vulnerability.
+type VulnerabilityType string
+
+const (
+	VulnerabilityPortExposure   VulnerabilityType = "PORT_EXPOSURE"
+	VulnerabilityLLMRouteLeak   VulnerabilityType = "LLM_ROUTE_LEAK"
+	VulnerabilityDependencyCVE  VulnerabilityType = "DEPENDENCY_CVE"
+	VulnerabilityHardcodedSecret VulnerabilityType = "HARDCODED_SECRET"
+)
+
+// Finding represents a security finding identified during scanning.
+type Finding struct {
+	ID          string            `json:"id"`
+	Type        VulnerabilityType `json:"type"`
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	Severity    string            `json:"severity"` // CRITICAL, HIGH, MEDIUM, LOW
+	TargetFile  string            `json:"target_file"`
+	LineNumber  int               `json:"line_number,omitempty"`
+	SuggestedFix string           `json:"suggested_fix"`
+	DetectedAt  time.Time         `json:"detected_at"`
+}
+
+// GitCommitOptions holds attributes required for automated commit creation.
+type GitCommitOptions struct {
+	BranchName    string `json:"branch_name"`
+	CommitMessage string `json:"commit_message"`
+	TargetFile    string `json:"target_file"`
+	FileContent   string `json:"file_content"`
+	AuthorName    string `json:"author_name"`
+	AuthorEmail   string `json:"author_email"`
+}
+
+// Validate ensures the GitCommitOptions comply with domain rules.
+func (g *GitCommitOptions) Validate() error {
+	if strings.TrimSpace(g.BranchName) == "" {
+		return ErrEmptyBranchName
+	}
+	if strings.TrimSpace(g.CommitMessage) == "" {
+		return ErrEmptyCommitMessage
+	}
+	if strings.Contains(g.TargetFile, "..") || strings.HasPrefix(g.TargetFile, "/") {
+		return ErrUnsafeFilePath
+	}
+	return nil
+}
+
+// PullRequestRequest holds parameters required to create a GitHub Pull Request via API.
+type PullRequestRequest struct {
+	Owner      string `json:"owner"`
+	Repo       string `json:"repo"`
+	Title      string `json:"title"`
+	Body       string `json:"body"`
+	HeadBranch string `json:"head_branch"`
+	BaseBranch string `json:"base_branch"`
+	Draft      bool   `json:"draft"`
+}
+
+// Validate ensures the PullRequestRequest parameters adhere to valid repository structure.
+func (p *PullRequestRequest) Validate() error {
+	if p.Owner == "" || p.Repo == "" {
+		return ErrInvalidRepoURL
+	}
+	if p.HeadBranch == "" || p.BaseBranch == "" {
+		return ErrEmptyBranchName
+	}
+	return nil
+}
+
+// PullRequestResponse contains the created PR metadata returned from GitHub.
+type PullRequestResponse struct {
+	Number   int    `json:"number"`
+	HTMLURL  string `json:"html_url"`
+	State    string `json:"state"`
+	ID       int64  `json:"id"`
+	NodeID   string `json:"node_id"`
+	Draft    bool   `json:"draft"`
+}
+
+// GitService defines the contract for interacting with local Git commands safely.
+type GitService interface {
+	CreateBranchAndCommit(ctx context.Context, opts GitCommitOptions) error
+	PushBranch(ctx context.Context, remote string, branchName string) error
+	GetCurrentBranch(ctx context.Context) (string, error)
+}
+
+// GitHubService defines the contract for remote GitHub REST API interactions.
+type GitHubService interface {
+	CreatePullRequest(ctx context.Context, token string, prReq PullRequestRequest) (*PullRequestResponse, error)
+}
+
+// SecurityAuditor defines the contract for autonomous scanning and patching.
+type SecurityAuditor interface {
+	ScanPort(ctx context.Context, host string, port int) (*Finding, error)
+	ScanLLMRoute(ctx context.Context, endpoint string) (*Finding, error)
+	ScanDependencies(ctx context.Context, projectPath string) ([]Finding, error)
+	GeneratePatch(ctx context.Context, finding Finding) (string, error)
+}
+
+// Helper to sanitize branch names (Clean Code domain utility)
+func SanitizeBranchName(name string) string {
+	reg := regexp.MustCompile(`[^a-zA-Z0-9/_-]`)
+	sanitized := reg.ReplaceAllString(name, "-")
+	return fmt.Sprintf("security-fix/%s", strings.TrimPrefix(sanitized, "security-fix/"))
+}
