@@ -118,11 +118,16 @@ func (a *AutonomousAuditUseCase) ExecuteWorkflow(ctx context.Context, params Aud
 		result.Success = true
 		return result, nil
 	}
+
+	if finding.Language == "" {
+		finding.Language = domain.DetectLanguageFromPath(finding.TargetFile)
+	}
+
 	result.Finding = finding
-	addStep(2, "Varredura e Identificação da Brecha", "COMPLETED", fmt.Sprintf("Brecha identificada: %s (%s)", finding.Title, finding.Severity))
+	addStep(2, "Varredura e Identificação da Brecha", "COMPLETED", fmt.Sprintf("Brecha identificada: %s (%s) em [%s]", finding.Title, finding.Severity, finding.Language))
 
 	// Step 3: Consulta RAG + Modelo Fine-Tuned (Geração de Patch)
-	addStep(3, "Consulta RAG & Fine-Tuning AI Patch", "IN_PROGRESS", "Recuperando contexto RAG e invocando modelo Fine-Tuned")
+	addStep(3, "Consulta RAG & Fine-Tuning AI Patch", "IN_PROGRESS", "Recuperando contexto RAG e invocando modelo Fine-Tuned Multi-Language")
 	ragData, patch, err := a.performAIPatchStep(ctx, *finding, params)
 	if err != nil {
 		addStep(3, "Consulta RAG & Fine-Tuning AI Patch", "FAILED", err.Error())
@@ -132,11 +137,11 @@ func (a *AutonomousAuditUseCase) ExecuteWorkflow(ctx context.Context, params Aud
 	result.AIPatch = patch
 	result.PatchCode = patch.PatchedCode
 	result.CommitMsg = patch.ConventionalCommitMsg
-	addStep(3, "Consulta RAG & Fine-Tuning AI Patch", "COMPLETED", fmt.Sprintf("Patch gerado via Fine-Tuned LLM (Match AST: %.1f%%)", patch.ASTMatchScore))
+	addStep(3, "Consulta RAG & Fine-Tuning AI Patch", "COMPLETED", fmt.Sprintf("Patch %s gerado via Fine-Tuned LLM (Match AST: %.1f%%)", patch.Language, patch.ASTMatchScore))
 
 	// Step 3.1: MCP Tool Validation (Linter & AST)
-	addStep(31, "Validação de Patch via MCP Tools", "IN_PROGRESS", "Executando AST parse e Linter Go via MCP Executor")
-	valLog, err := a.performMCPValidationStep(ctx, finding.TargetFile, patch.PatchedCode)
+	addStep(31, "Validação de Patch via MCP Tools", "IN_PROGRESS", fmt.Sprintf("Executando Universal AST parse e Linter %s via MCP Executor", finding.Language))
+	valLog, err := a.performMCPValidationStep(ctx, finding.TargetFile, patch.PatchedCode, finding.Language)
 	if err != nil {
 		addStep(31, "Validação de Patch via MCP Tools", "FAILED", err.Error())
 		return result, fmt.Errorf("step 3.1 validation failed: %w", err)
@@ -225,8 +230,8 @@ func (a *AutonomousAuditUseCase) performAIPatchStep(ctx context.Context, finding
 }
 
 // Helper: Step 3.1 MCP Linter & AST Validation
-func (a *AutonomousAuditUseCase) performMCPValidationStep(ctx context.Context, targetFile string, codeContent string) (string, error) {
-	astOk, astLog, err := a.mcpExecutor.ValidatePatchAST(ctx, targetFile, codeContent)
+func (a *AutonomousAuditUseCase) performMCPValidationStep(ctx context.Context, targetFile string, codeContent string, lang domain.Language) (string, error) {
+	astOk, astLog, err := a.mcpExecutor.ValidatePatchAST(ctx, targetFile, codeContent, lang)
 	if err != nil {
 		return "", fmt.Errorf("MCP AST validation execution error: %w", err)
 	}
@@ -234,7 +239,7 @@ func (a *AutonomousAuditUseCase) performMCPValidationStep(ctx context.Context, t
 		return "", fmt.Errorf("%w: %s", domain.ErrLinterValidationFailed, astLog)
 	}
 
-	lintOk, lintLog, err := a.mcpExecutor.RunLinter(ctx, targetFile)
+	lintOk, lintLog, err := a.mcpExecutor.RunLinter(ctx, targetFile, lang)
 	if err != nil {
 		return "", fmt.Errorf("MCP Linter execution error: %w", err)
 	}
@@ -242,7 +247,7 @@ func (a *AutonomousAuditUseCase) performMCPValidationStep(ctx context.Context, t
 		return "", fmt.Errorf("%w: %s", domain.ErrLinterValidationFailed, lintLog)
 	}
 
-	return fmt.Sprintf("AST Check: %s | Linter: %s", astLog, lintLog), nil
+	return fmt.Sprintf("Universal AST Check (%s): %s | Linter: %s", lang, astLog, lintLog), nil
 }
 
 // Helper: Step 5 Automated Commit via MCP

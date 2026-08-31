@@ -1,6 +1,7 @@
 # 🛡️ RustShield DevSecOps Suite: AST, RAG, MCP & Fine-Tuning Autonomous AI Studio
 
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go)](https://golang.org)
+[![Multi-Language](https://img.shields.io/badge/Multi--Language-Go%20%7C%20Python%20%7C%20Rust%20%7C%20TS%20%7C%20Java%20%7C%20C%23%20%7C%20CPP-brightgreen?style=flat-square)](#-visão-geral-e-pilares)
 [![Architecture](https://img.shields.io/badge/Architecture-DDD%20%7C%20Clean%20Code%20%7C%20SOA-orange?style=flat-square)](#-arquitetura-e-camadas-ddd-em-go)
 [![BPMN Flow](https://img.shields.io/badge/BPMN-7%20Steps%20Automated-brightgreen?style=flat-square)](#-fluxo-orquestrado-bpmn-7-etapas)
 [![MCP Protocol](https://img.shields.io/badge/MCP-JSON--RPC%20v2.0-sky?style=flat-square)](#-model-context-protocol-mcp-server-v2024-11-05)
@@ -8,16 +9,17 @@
 [![Fine Tuning](https://img.shields.io/badge/Fine--Tuning-4--Bit%20QLoRA-amber?style=flat-square)](#-studio-de-fine-tuning--datasets-sintéticos-4-bit-qlora)
 [![Security Audit](https://img.shields.io/badge/Security-OS%20Injection%20Proof-red?style=flat-square)](#-auditoria-de-segurança--zero-os-injection)
 
-**RustShield** é uma plataforma autônoma de DevSecOps, análise AST (Abstract Syntax Tree) e orquestração de remedições de segurança orientada a Inteligência Artificial. O sistema combina varreduras proativas de vulnerabilidades em código Go e Web, recuperação de contexto semântico vetorial (**RAG**), exposição padronizada de ferramentas do sistema via **MCP (Model Context Protocol)** e sintonia fina de LLMs especializados (**Fine-Tuning QLoRA 4-bit**) para gerar patches autônomos com mensagens em **Conventional Commits** e abrir Pull Requests no GitHub através de um fluxo **BPMN de 7 etapas**.
+**RustShield** é uma plataforma autônoma de DevSecOps, análise AST (Abstract Syntax Tree) universal e orquestração de remedições de segurança orientada a Inteligência Artificial **100% agnóstica de linguagem** (suportando Go, Python, Rust, TypeScript/JavaScript, Java, C#, C++, PHP, etc.). O sistema combina varreduras proativas de vulnerabilidades, recuperação de contexto semântico vetorial (**RAG**), exposição padronizada de ferramentas do sistema via **MCP (Model Context Protocol)** com registro de **Linters Pluggáveis** e sintonia fina de LLMs especializados (**Fine-Tuning QLoRA 4-bit**) para gerar patches autônomos multi-linguagem com mensagens em **Conventional Commits** e abrir Pull Requests no GitHub através de um fluxo **BPMN de 7 etapas**.
 
 ---
 
 ## 📌 Índice
 
 - [Visão Geral e Pilares](#-visão-geral-e-pilares)
-- [Arquitetura e Camadas DDD em Go](#-arquitetura-e-camadas-ddd-em-go)
+- [Arquitetura e Camadas DDD Multi-Linguagem](#-arquitetura-e-camadas-ddd-em-go)
+- [Motor AST Universal (Tree-sitter & Semgrep)](#-motor-ast-universal-tree-sitter--semgrep)
 - [Motor RAG (Retrieval-Augmented Generation)](#-motor-rag-retrieval-augmented-generation)
-- [Model Context Protocol (MCP Server v2024-11-05)](#-model-context-protocol-mcp-server-v2024-11-05)
+- [Model Context Protocol & Linters Pluggáveis (MCP Server)](#-model-context-protocol-mcp-server-v2024-11-05)
 - [Studio de Fine-Tuning & Datasets Sintéticos (4-bit QLoRA)](#-studio-de-fine-tuning--datasets-sintéticos-4-bit-qlora)
 - [Fluxo Orquestrado BPMN (7 Etapas)](#-fluxo-orquestrado-bpmn-7-etapas)
 - [Auditoria de Segurança & Zero OS Injection](#-auditoria-de-segurança--zero-os-injection)
@@ -32,13 +34,14 @@
 
 ## 🚀 Visão Geral e Pilares
 
-O RustShield foi projetado para eliminar falsos positivos de regex e mitigar vulnerabilidades em código de forma 100% confiável e reproduzível:
+O RustShield foi projetado para eliminar falsos positivos de regex e mitigar vulnerabilidades em código de qualquer linguagem de forma 100% confiável e reproduzível:
 
-1. **AST Native Analysis (Zero Regex)**: Varredura de sintaxe e validação de estruturas de código utilizando o parser nativo da linguagem Go (`go/parser`, `go/ast`) e TypeScript Compiler API.
-2. **Retrieval-Augmented Generation (RAG)**: Base vetorial com cálculo de similaridade de cosseno para contextualizar correções de IA com advisories de CVEs (NVD/GitHub) e convenções internas do repositório.
-3. **Model Context Protocol (MCP)**: Servidor e ferramentas alinhados à especificação oficial do MCP (JSON-RPC 2.0) para expor validações de linter, parsing AST e automação Git/GitHub para agentes IA.
-4. **4-Bit QLoRA Fine-Tuning**: Gerador de datasets sintéticos instrucionais (*Vulnerable Code* $\rightarrow$ *AST Breakdown* $\rightarrow$ *Secure Remediated Output*) e simulador de hiperparâmetros de treinamento para modelos LLM focados em DevSecOps.
-5. **Automação Git Sem Shell (Zero OS Injection)**: Execução direta de comandos Git via `exec.CommandContext` com argumentos parametrizados sem invoking de subshells (`sh`/`bash`).
+1. **Universal AST Engine (Tree-sitter / Semgrep)**: Parsing sintático e correspondência de padrões estruturais agnósticos de linguagem (Go, Python, Rust, TS/JS, Java, C#, C++, PHP, etc.).
+2. **Pluggable Linters Registry**: Linters configuráveis e desacoplados por linguagem integrados ao protocolo MCP (`GoLinter`, `PythonLinter`, `TypeScriptLinter`, `RustLinter`, etc.).
+3. **Retrieval-Augmented Generation (RAG)**: Base vetorial com cálculo de similaridade de cosseno para contextualizar correções de IA com advisories de CVEs (NVD/GitHub) e convenções por linguagem.
+4. **Model Context Protocol (MCP)**: Servidor e ferramentas alinhados à especificação oficial do MCP (JSON-RPC 2.0) para expor validações de linter, parsing AST e automação Git/GitHub para agentes IA.
+5. **4-Bit QLoRA Fine-Tuning**: Gerador de datasets sintéticos instrucionais (*Vulnerable Code* $\rightarrow$ *Universal AST Breakdown* $\rightarrow$ *Secure Remediated Output*) para modelos LLM focados em DevSecOps.
+6. **Automação Git Sem Shell (Zero OS Injection)**: Execução direta de comandos Git via `exec.CommandContext` com argumentos parametrizados sem subshells (`sh`/`bash`).
 
 ---
 

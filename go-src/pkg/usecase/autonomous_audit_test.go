@@ -116,14 +116,14 @@ type MockMCPToolExecutor struct {
 	ASTErr    error
 }
 
-func (m *MockMCPToolExecutor) RunLinter(ctx context.Context, targetPath string) (bool, string, error) {
+func (m *MockMCPToolExecutor) RunLinter(ctx context.Context, targetPath string, lang domain.Language) (bool, string, error) {
 	if m.LinterErr != nil {
 		return false, "", m.LinterErr
 	}
 	return m.LinterOk, "Linter status OK", nil
 }
 
-func (m *MockMCPToolExecutor) ValidatePatchAST(ctx context.Context, targetFile string, codeContent string) (bool, string, error) {
+func (m *MockMCPToolExecutor) ValidatePatchAST(ctx context.Context, targetFile string, codeContent string, lang domain.Language) (bool, string, error) {
 	if m.ASTErr != nil {
 		return false, "", m.ASTErr
 	}
@@ -148,6 +148,7 @@ func TestAutonomousAuditUseCase_SuccessFlow(t *testing.T) {
 	finding := &domain.Finding{
 		ID:          "SEC-PORT-001",
 		Type:        domain.VulnerabilityPortExposure,
+		Language:    domain.LangGo,
 		Title:       "Unrestricted TCP Port Exposure",
 		Description: "Binding on 0.0.0.0",
 		Severity:    "CRITICAL",
@@ -192,6 +193,55 @@ func TestAutonomousAuditUseCase_SuccessFlow(t *testing.T) {
 
 	if len(result.BPMNSteps) < 7 {
 		t.Errorf("expected at least 7 BPMN telemetry steps, got %d", len(result.BPMNSteps))
+	}
+}
+
+func TestAutonomousAuditUseCase_MultiLanguageFlow(t *testing.T) {
+	ctx := context.Background()
+
+	finding := &domain.Finding{
+		ID:          "SEC-PY-001",
+		Type:        domain.VulnerabilityCommandInjection,
+		Language:    domain.LangPython,
+		Title:       "Python Subprocess Shell Injection",
+		Description: "subprocess.run with shell=True",
+		Severity:    "CRITICAL",
+		TargetFile:  "app.py",
+		DetectedAt:  time.Now(),
+	}
+
+	gitSvc := &MockGitService{}
+	githubSvc := &MockGitHubService{}
+	auditor := &MockSecurityAuditor{Finding: finding}
+	aiProvider := &MockSecurityAIProvider{}
+	mcpExec := &MockMCPToolExecutor{LinterOk: true, ASTOk: true}
+
+	uc := usecase.NewAutonomousAuditUseCase(gitSvc, githubSvc, auditor, aiProvider, mcpExec)
+
+	params := usecase.AuditWorkflowParams{
+		RepoOwner:     "rustshield",
+		RepoName:      "python-app",
+		LocalRepoPath: ".",
+		TargetFile:    "app.py",
+		GitHubToken:   "ghp_test_token_12345",
+		BaseBranch:    "main",
+		Remote:        "origin",
+		ScanType:      domain.VulnerabilityCommandInjection,
+		AuthorName:    "RustShield Bot",
+		AuthorEmail:   "bot@rustshield.dev",
+	}
+
+	result, err := uc.ExecuteWorkflow(ctx, params)
+	if err != nil {
+		t.Fatalf("expected python multi-language workflow to succeed, got error: %v", err)
+	}
+
+	if result.Finding.Language != domain.LangPython {
+		t.Errorf("expected language python, got: %s", result.Finding.Language)
+	}
+
+	if !result.Success {
+		t.Errorf("expected result.Success to be true")
 	}
 }
 
