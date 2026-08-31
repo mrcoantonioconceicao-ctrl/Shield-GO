@@ -1,6 +1,6 @@
 {
   "name": "RustShield - DevSecOps Audit & Git PR Automation Studio",
-  "description": "An autonomous security audit and Git PR automation studio in Go following DDD, Clean Code, and BPMN architecture principles.",
+  "description": "An autonomous DevSecOps security audit suite featuring AST analysis (Zero Regex), RAG Knowledge Retrieval, Model Context Protocol (MCP) server, and QLoRA Fine-Tuning.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

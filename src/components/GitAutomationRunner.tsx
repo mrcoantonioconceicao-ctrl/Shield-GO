@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GitPullRequest, Play, CheckCircle2, ShieldAlert, Terminal, AlertCircle, RefreshCw, ExternalLink, GitBranch, GitCommit } from 'lucide-react';
+import { GitPullRequest, Play, CheckCircle2, ShieldAlert, Terminal, AlertCircle, RefreshCw, ExternalLink, GitBranch, GitCommit, Network, KeyRound } from 'lucide-react';
 import { WorkflowVisualizer } from './WorkflowVisualizer';
 
 interface GitAutomationRunnerProps {
@@ -7,10 +7,10 @@ interface GitAutomationRunnerProps {
 }
 
 export const GitAutomationRunner: React.FC<GitAutomationRunnerProps> = ({ githubToken }) => {
-  const [repoOwner, setRepoOwner] = useState('acme-org');
-  const [repoName, setRepoName] = useState('secure-microservice');
+  const [repoOwner, setRepoOwner] = useState('mrcoantonioconceicao-ctrl');
+  const [repoName, setRepoName] = useState('NEXAVOR-QUANTUM-AUDIT');
   const [scanType, setScanType] = useState('PORT_EXPOSURE');
-  const [targetFile, setTargetFile] = useState('config/network.env');
+  const [targetFile, setTargetFile] = useState('server.ts');
   const [host, setHost] = useState('127.0.0.1');
   const [port, setPort] = useState(6379);
   const [llmRoute, setLlmRoute] = useState('/api/v1/llm/generate');
@@ -24,21 +24,17 @@ export const GitAutomationRunner: React.FC<GitAutomationRunnerProps> = ({ github
     setIsRunning(true);
     setErrorMessage('');
     setWorkflowResult(null);
-    setLogs(['[00:00.01] 🛡️ RustShield Autônomo inicializando orquestrador Go...']);
+
+    const initialLogs: string[] = [
+      `[${new Date().toLocaleTimeString()}] 🛡️ [Etapa 1] Inicializando RustShield Autonomous DevSecOps Engine...`,
+      `[${new Date().toLocaleTimeString()}] 🔗 Conectando à API REST do GitHub (repositório: ${repoOwner}/${repoName})...`,
+    ];
+    setLogs(initialLogs);
 
     try {
-      // Simulate live streaming terminal output feel
-      setTimeout(() => {
-        setLogs((prev) => [...prev, '[00:00.05] 🔍 Etapa 2: Executando scanner de reconhecido de porta/rota LLM...']);
-      }, 400);
-
-      setTimeout(() => {
-        setLogs((prev) => [...prev, '[00:00.12] 🧬 Etapa 3: Analisando e gerando patch de segurança sem regressão...']);
-      }, 900);
-
-      setTimeout(() => {
-        setLogs((prev) => [...prev, `[00:00.20] 🌿 Etapa 4: Criando branch local segura rustshield/fix-...`]);
-      }, 1400);
+      if (!githubToken || !githubToken.trim().startsWith('ghp_')) {
+        throw new Error('Autenticação Real Obrigatória: Por favor, insira um GitHub Token válido no topo da página (ex: ghp_...) com permissão "repo" para criar PRs reais.');
+      }
 
       const response = await fetch('/api/audit/execute', {
         method: 'POST',
@@ -46,32 +42,41 @@ export const GitAutomationRunner: React.FC<GitAutomationRunnerProps> = ({ github
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          repoOwner,
-          repoName,
-          githubToken,
+          repoOwner: repoOwner.trim(),
+          repoName: repoName.trim(),
+          githubToken: githubToken.trim(),
           scanType,
-          targetFile,
-          host,
+          targetFile: targetFile.trim(),
+          host: host.trim(),
           port,
-          llmRoute,
+          llmRoute: llmRoute.trim(),
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Falha ao executar o workflow de automação');
+        throw new Error(data.error || 'Falha ao executar o workflow de automação.');
       }
 
       setWorkflowResult(data);
-      setLogs((prev) => [
-        ...prev,
-        `[00:00.30] 📦 Etapa 5: Commit feito com exec.CommandContext (Sem Injeção de Comando)`,
-        `[00:00.40] 🚀 Etapa 6: Push para remote origin finalizado`,
-        `[00:00.50] 🎉 Etapa 7: Pull Request #${data.pull_request?.number || 42} criado via GitHub REST API!`,
-      ]);
+
+      const successLogs = [
+        `[${new Date().toLocaleTimeString()}] 🌳 [Etapa 2] Varredura e Auditoria AST concluída: ${data.ast_analysis?.total_nodes || 0} nós analisados, V(G) = ${data.ast_analysis?.cyclomatic_complexity || 1}.`,
+        `[${new Date().toLocaleTimeString()}] 🧬 [Etapa 3] Patch de segurança gerado via AST sem expressões regulares.`,
+        `[${new Date().toLocaleTimeString()}] 🌿 [Etapa 4] Branch remota criada no GitHub: refs/heads/${data.branch_name}`,
+        `[${new Date().toLocaleTimeString()}] 📦 [Etapa 5] Commit registrado com SHA: ${data.commit_sha?.slice(0, 7)}`,
+        `[${new Date().toLocaleTimeString()}] 🚀 [Etapa 6] Push remoto sincronizado com sucesso.`,
+        `[${new Date().toLocaleTimeString()}] 🎉 [Etapa 7] Pull Request #${data.pull_request?.number} aberto no GitHub: ${data.pull_request?.html_url}`,
+      ];
+
+      setLogs((prev) => [...prev, ...successLogs]);
     } catch (err: any) {
       setErrorMessage(err.message || 'Erro desconhecido durante execução');
+      setLogs((prev) => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] ❌ ERRO DE EXECUÇÃO: ${err.message || 'Falha na comunicação com a API do GitHub.'}`,
+      ]);
     } finally {
       setIsRunning(false);
     }
@@ -90,14 +95,24 @@ export const GitAutomationRunner: React.FC<GitAutomationRunnerProps> = ({ github
               <GitPullRequest className="h-4 w-4" />
             </div>
             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">
-              PARÂMETROS DO ORQUESTRADOR
+              PARÂMETROS DO ORQUESTRADOR 100% REAL
             </h3>
           </div>
+
+          {!githubToken && (
+            <div className="bg-[#150a00] border border-[#F27D26]/60 p-3.5 flex items-start space-x-3">
+              <KeyRound className="h-4 w-4 text-[#F27D26] shrink-0 mt-0.5" />
+              <div className="text-[11px] font-mono text-white/90 leading-tight">
+                <span className="text-[#F27D26] font-bold block mb-1">MODO 100% REAL REQUER TOKEN:</span>
+                Insira seu <strong>GitHub Personal Access Token (ghp_...)</strong> no campo superior para criar commits, branches e PRs reais no GitHub.
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] uppercase font-mono tracking-widest text-white/50 mb-1">
-                Owner (Organização)
+                Owner (Organização / Usuário)
               </label>
               <input
                 type="text"
@@ -108,7 +123,7 @@ export const GitAutomationRunner: React.FC<GitAutomationRunnerProps> = ({ github
             </div>
             <div>
               <label className="block text-[10px] uppercase font-mono tracking-widest text-white/50 mb-1">
-                Repo (Repositório)
+                Repo (Repositório Alvo)
               </label>
               <input
                 type="text"
@@ -121,21 +136,21 @@ export const GitAutomationRunner: React.FC<GitAutomationRunnerProps> = ({ github
 
           <div>
             <label className="block text-[10px] uppercase font-mono tracking-widest text-white/50 mb-1">
-              Tipo de Varredura (Scan Scope)
+              Tipo de Varredura AST (Scan Scope)
             </label>
             <select
               value={scanType}
               onChange={(e) => {
                 setScanType(e.target.value);
-                if (e.target.value === 'PORT_EXPOSURE') setTargetFile('config/network.env');
+                if (e.target.value === 'PORT_EXPOSURE') setTargetFile('server.ts');
                 else if (e.target.value === 'LLM_ROUTE_LEAK') setTargetFile('server.ts');
                 else setTargetFile('package.json');
               }}
               className="w-full bg-black border border-white/20 px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#F27D26]"
             >
               <option value="PORT_EXPOSURE">Reconhecimento de Porta Exposta (PORT_EXPOSURE)</option>
-              <option value="LLM_ROUTE_LEAK">Auditoria de Rota de LLM (LLM_ROUTE_LEAK)</option>
-              <option value="DEPENDENCY_CVE">Vulnerabilidade de Dependência (DEPENDENCY_CVE)</option>
+              <option value="LLM_ROUTE_LEAK">Auditoria de Rota LLM via AST (LLM_ROUTE_LEAK)</option>
+              <option value="DEPENDENCY_CVE">Vulnerabilidade em Dependência Crítica (DEPENDENCY_CVE)</option>
             </select>
           </div>
 
@@ -195,12 +210,12 @@ export const GitAutomationRunner: React.FC<GitAutomationRunnerProps> = ({ github
               {isRunning ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span>EXECUTANDO PIPELINE GO BPMN...</span>
+                  <span>EXECUTANDO PIPELINE REAL NO GITHUB...</span>
                 </>
               ) : (
                 <>
                   <Play className="h-4 w-4 fill-black" />
-                  <span>DISPARAR AUDITORIA & PR AUTOMÁTICO</span>
+                  <span>DISPARAR AUDITORIA & PR REAL NO GITHUB</span>
                 </>
               )}
             </button>
@@ -218,15 +233,15 @@ export const GitAutomationRunner: React.FC<GitAutomationRunnerProps> = ({ github
                   CLI Execution Log (RustShield-Go Runtime)
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-[#F27D26] bg-[#F27D26]/10 px-2 py-0.5 border border-[#F27D26]/30">
-                syscall execve
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 border border-emerald-500/30">
+                100% REAL • ZERO REGEX
               </span>
             </div>
 
             <div className="flex-1 overflow-y-auto font-mono text-[11px] space-y-1.5 text-white/90 pr-2">
               {logs.length === 0 ? (
                 <div className="text-white/30 italic py-12 text-center uppercase tracking-widest text-[10px]">
-                  // Aguardando disparo do orquestrador...
+                  // Aguardando disparo do orquestrador real...
                 </div>
               ) : (
                 logs.map((log, index) => (
@@ -246,42 +261,55 @@ export const GitAutomationRunner: React.FC<GitAutomationRunnerProps> = ({ github
                   <div className="p-1.5 bg-[#F27D26] text-black">
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
-                  <h4 className="text-sm font-black uppercase tracking-wider text-white">
-                    PULL REQUEST CRIADO COM SUCESSO!
-                  </h4>
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-wider text-white">
+                      PULL REQUEST REAL CRIADO NO GITHUB!
+                    </h4>
+                    <span className="text-[10px] font-mono text-emerald-400">
+                      PR #{workflowResult.pull_request?.number} • Status: {workflowResult.pull_request?.state || 'open'}
+                    </span>
+                  </div>
                 </div>
                 <a
                   href={workflowResult.pull_request?.html_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center space-x-2 text-xs bg-[#F27D26] text-black hover:bg-[#ff8c35] px-4 py-2 font-black uppercase tracking-wider transition-all"
+                  className="flex items-center space-x-2 text-xs bg-[#F27D26] text-black hover:bg-[#ff8c35] px-4 py-2 font-black uppercase tracking-wider transition-all cursor-pointer"
                 >
                   <span>VER PR NO GITHUB</span>
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div className="bg-black p-4 border border-white/10 space-y-1">
                   <span className="text-white/40 text-[10px] font-mono uppercase tracking-widest block">Branch Gerada</span>
-                  <div className="flex items-center space-x-2 font-mono text-[#F27D26] font-bold">
-                    <GitBranch className="h-4 w-4 text-[#F27D26]" />
-                    <span>{workflowResult.branch_name}</span>
+                  <div className="flex items-center space-x-2 font-mono text-[#F27D26] font-bold truncate">
+                    <GitBranch className="h-4 w-4 text-[#F27D26] shrink-0" />
+                    <span className="truncate">{workflowResult.branch_name}</span>
                   </div>
                 </div>
 
                 <div className="bg-black p-4 border border-white/10 space-y-1">
-                  <span className="text-white/40 text-[10px] font-mono uppercase tracking-widest block">Commit Message</span>
+                  <span className="text-white/40 text-[10px] font-mono uppercase tracking-widest block">Commit SHA</span>
                   <div className="flex items-center space-x-2 font-mono text-white truncate">
                     <GitCommit className="h-4 w-4 text-white/40 flex-shrink-0" />
-                    <span className="truncate">{workflowResult.commit_message}</span>
+                    <span className="truncate">{workflowResult.commit_sha}</span>
+                  </div>
+                </div>
+
+                <div className="bg-black p-4 border border-white/10 space-y-1">
+                  <span className="text-white/40 text-[10px] font-mono uppercase tracking-widest block">AST Scanned</span>
+                  <div className="flex items-center space-x-2 font-mono text-emerald-400 font-bold">
+                    <Network className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>{workflowResult.ast_analysis?.total_nodes} Nós (V(G) = {workflowResult.ast_analysis?.cyclomatic_complexity})</span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-black p-4 border border-white/10 space-y-2">
                 <span className="text-white/40 text-[10px] font-mono uppercase tracking-widest block">
-                  Patch Aplicado em ({workflowResult.finding?.target_file})
+                  Patch Aplicado no Repositório ({workflowResult.finding?.target_file})
                 </span>
                 <pre className="font-mono text-[11px] text-[#F27D26] bg-[#050505] p-3 border border-white/10 overflow-x-auto max-h-40">
                   <code>{workflowResult.patch_code}</code>
